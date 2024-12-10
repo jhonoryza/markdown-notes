@@ -94,15 +94,21 @@ services:
         entrypoint: php artisan octane:frankenphp --host=0.0.0.0 --port=80 --workers=2 --max-requests=1000
 ```
 
+run it using
+
+```bash
+docker compose up -d
+```
+
 ## my use case
 
 i use frankenphp in my personal site using laravel + filament for frontend and
 admin panel at [https://fajar.labkita.my.id](https://fajar.labkita.my.id), the
 speed is amazing :)
 
-![pagespeed1](./images/google-page-speed-1.png)
+![pagespeed1](./images/google-page-speed-1.jpeg)
 
-![pagespeed2](./images/google-page-speed-2.png)
+![pagespeed2](./images/google-page-speed-2.jpeg)
 
 ## Reference
 
