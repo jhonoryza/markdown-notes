@@ -139,3 +139,15 @@ async bookedTicket(lobbyId) {
     return null;
 }
 ```
+
+we have successfully build a lobby mechanism for a ticketing system using Redis
+as the temporary data store.
+
+By implementing functions like `findOrCreateLobby` to ensure users can only join
+one lobby at a time, and `bookedTicket` to validate and clean up lobbies after
+transactions, we can create a robust and efficient system.
+
+This approach not only ensures data integrity but also optimizes application
+performance by leveraging Redis as an `in-memory database`. By understanding and
+adapting these concepts, you can apply them to various scenarios requiring
+session or lobby-based management.
