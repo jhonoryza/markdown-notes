@@ -9,7 +9,7 @@ php artisan octane:install --server=frankenphp
 
 adjust env variable `OCTANE_SERVER=frankenphp`
 
-to try run frankenphp, run this command:
+run frankenphp with this command:
 
 ```bash
 php artisan octane:frankenphp
@@ -36,7 +36,7 @@ The octane:frankenphp command can take the following options:
 - --log-level: Log messages at or above the specified log level, using the
   native Caddy logger
 
-create a `Dockerfile`
+for deployment let's create a`Dockerfile`
 
 i use `php 8.2` and `postgres` database so i need to install `pgsql` php
 extension
@@ -75,7 +75,7 @@ RUN composer install --no-dev --optimize-autoloader
 RUN rm -rf ./git
 
 # Run FrankenPHP
-ENTRYPOINT ["php", "artisan", "octane:frankenphp", "--host=0.0.0.0", "--port=80"]
+CMD ["php", "artisan", "octane:frankenphp", "--host=0.0.0.0", "--port=80", "--admin-port=2019"]
 ```
 
 lets build this image using
@@ -88,10 +88,11 @@ lets create a `docker-compose.yml` file
 
 ```yaml
 services:
-    app:
-        image: "app:latest"
-        restart: unless-stopped
-        entrypoint: php artisan octane:frankenphp --host=0.0.0.0 --port=80 --workers=2 --max-requests=1000
+  app:
+    image: "app:latest"
+    restart: unless-stopped
+    volumes:
+      - ./.env:/app/.env
 ```
 
 run it using
