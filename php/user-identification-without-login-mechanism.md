@@ -1,109 +1,107 @@
 # User Identification without Login Mechanism
 
-## Pendekatan Cookie
+## Cookie-Based Approach
 
-Cara Kerja dengan Cookie di Frontend dan Backend
+### How It Works with Cookies in Frontend and Backend
 
-Backend akan mengatur cookie dengan informasi tertentu, seperti token atau flag,
-saat user melakukan claim hadiah. Cookie ini disimpan di browser user.
+The backend sets a cookie with specific information, such as a token or flag,
+when the user claims a reward. This cookie is stored in the user's browser.
 
-Frontend tidak perlu secara eksplisit mengelola cookie, karena browser secara
-otomatis menyertakan cookie pada setiap request ke domain yang sama (jika cookie
-diatur dengan benar).
+The frontend does not need to explicitly manage the cookie, as the browser
+automatically includes cookies in requests to the same domain (if configured
+correctly).
 
-Kelebihan dan Kekurangan Pendekatan Cookie
+### Pros and Cons of the Cookie-Based Approach
 
-Kelebihan:
+**Pros:**
 
-- Sederhana
-- Browser mengelola cookie secara otomatis.
+- Simple to implement.
+- The browser automatically handles cookies.
 
-Kekurangan:
+**Cons:**
 
-- Cookie bisa dihapus oleh user.
-- Kurang efektif untuk mode incognito atau perangkat yang berbeda.
+- Cookies can be deleted by users.
+- Less effective in incognito mode or across different devices.
 
-contoh fetch
+### Example Using `fetch`
 
-```js
+```javascript
 const response = await fetch("https://backend-domain.com/api/claim-reward", {
     method: "POST",
-    credentials: "include", // Mengaktifkan pengiriman kredensial (cookie)
+    credentials: "include", // Enables credential (cookie) sharing
     headers: {
         "Content-Type": "application/json",
     },
 });
 ```
 
-contoh axios
+### Example Using `axios`
 
-```js
+```javascript
 const response = await axios.post(
     "https://backend-domain.com/api/claim-reward",
     {},
-    { withCredentials: true }, // Mengaktifkan pengiriman kredensial
+    { withCredentials: true }, // Enables credential sharing
 );
 ```
 
-Perbedaan fetch vs Axios dalam Mengelola Kredensial
+### Differences Between `fetch` and `axios` for Credential Management
 
-| Fitur                  | Fetch                             | Axios                                 |
-| ---------------------- | --------------------------------- | ------------------------------------- |
-| Konfigurasi Kredensial | Menggunakan credentials (include) | Menggunakan withCredentials: true     |
-| Default Behavior       | same-origin                       | Tidak mengirim kredensial             |
-| Global Configuration   | Harus membungkus fetch            | Dapat diatur secara global (defaults) |
-| Browser Support        | Native di browser modern          | Memerlukan library eksternal          |
+| Feature                  | Fetch                                | Axios                                |
+| ------------------------ | ------------------------------------ | ------------------------------------ |
+| Credential Configuration | Uses `credentials` (e.g., `include`) | Uses `withCredentials: true`         |
+| Default Behavior         | `same-origin`                        | Does not send credentials            |
+| Global Configuration     | Requires wrapping `fetch`            | Can be set globally (via `defaults`) |
+| Browser Support          | Native to modern browsers            | Requires an external library         |
 
-Hal yang Perlu Diperhatikan
+### Key Considerations
 
-1. HTTPS dan SameSite:
+1. **HTTPS and SameSite:**
+   - If using `SameSite=None` for cookies, the backend must operate over HTTPS.
+     Modern browsers require this for security.
 
-Jika menggunakan SameSite=None untuk cookie, backend harus berjalan di HTTPS.
-Browser modern memerlukan ini untuk alasan keamanan.
+2. **CORS:**
+   - The backend must be configured to support CORS with credentials
+     (`supports_credentials: true`).
 
-2. CORS:
+3. **Incognito Mode:**
+   - Some browsers may limit or delete cookies in incognito mode, affecting
+     cookie-based mechanisms.
 
-Backend harus dikonfigurasi untuk mendukung CORS dengan kredensial
-(supports_credentials: true).
+4. **Alternatives:**
+   - To avoid manual credential handling, libraries like `axios` may be more
+     convenient than `fetch`.
 
-3. Mode Incognito:
-
-Beberapa browser mungkin membatasi atau menghapus cookie dalam mode incognito,
-yang dapat memengaruhi mekanisme berbasis cookie.
-
-4. Alternatif:
-
-Jika Anda ingin menghindari pengelolaan kredensial manual, library seperti Axios
-dapat lebih nyaman dibandingkan dengan fetch.
+### PHP Example for Reward Claim
 
 ```php
-    $cookieName = 'reward_claimed';
+$cookieName = 'reward_claimed';
 
-    // Periksa apakah cookie sudah ada
-    if ($request->cookie($cookieName)) {
-        return response()->json([
-            'message' => 'Anda sudah mengklaim hadiah!'
-        ], 403);
-    }
+// Check if the cookie already exists
+if ($request->cookie($cookieName)) {
+    return response()->json([
+        'message' => 'You have already claimed the reward!'
+    ], 403);
+}
 
-    $response = response()->json([
-        'message' => 'Hadiah berhasil diklaim!'
-    ]);
+$response = response()->json([
+    'message' => 'Reward claimed successfully!'
+]);
 
-    return $response->cookie(
-        $cookieName, 
-        true, 
-        60 * 24 * 30, // 30 hari
-        null, 
-        null, 
-        true, // Secure
-        true, // HttpOnly
-        false, // Raw
-        'None' // SameSite
-    );
+return $response->cookie(
+    $cookieName, 
+    true, 
+    60 * 24 * 30, // 30 days
+    null, 
+    null, 
+    true, // Secure
+    true, // HttpOnly
+    false, // Raw
+    'None' // SameSite
+);
 ```
 
-## Konfigurasi Cors
+## CORS Configuration
 
 ```php
 return [
@@ -111,7 +109,7 @@ return [
 
     'allowed_methods' => ['*'],
 
-    'allowed_origins' => ['http://localhost:3000'], // Domain frontend 
+    'allowed_origins' => ['http://localhost:3000'], // Frontend domain
 
     'allowed_origins_patterns' => [],
 
@@ -121,47 +119,51 @@ return [
 
     'max_age' => 0,
 
-    'supports_credentials' => true, // Penting untuk mengizinkan kredensial
+    'supports_credentials' => true, // Important to allow credentials
 ];
 ```
 
-## Kombinasi Cookie dan Backend Session Id
+## Combining Cookies and Backend Session ID
 
-1. Frontend Mengakses /csrf-token (Pertama Kali):
+### Step 1: Frontend Accesses `/csrf-token` (Initial Request)
 
-- Saat frontend pertama kali dibuka, frontend mengirimkan permintaan GET ke
-  endpoint /csrf-token untuk mendapatkan token CSRF.
-- Backend mengatur sesi jika belum dimulai, dan menyertakan cookie
-  backend_session pada response.
-- Backend mengembalikan token CSRF melalui respons dalam bentuk JSON.
+- When the frontend is first opened, it sends a GET request to the `/csrf-token`
+  endpoint to obtain a CSRF token.
+- The backend starts a session if it has not already and includes a
+  `backend_session` cookie in the response.
+- The backend returns the CSRF token in a JSON response.
 
-2. Frontend Menyimpan CSRF Token:
+### Step 2: Frontend Stores the CSRF Token
 
-- Setelah menerima respons, frontend menyimpan token CSRF yang diterima dari
-  backend.
+- After receiving the response, the frontend stores the CSRF token for
+  subsequent requests.
 
-3. Frontend Mengirim Permintaan Klaim Hadiah:
+### Step 3: Frontend Sends Reward Claim Request
 
-- Saat pengguna submit form klaim hadiah, frontend mengirimkan permintaan POST
-  ke API /claim-reward.
-- CSRF Token yang diterima sebelumnya disertakan di dalam header X-CSRF-TOKEN.
-- Cookie backend_session yang berisi ID sesi pengguna dikirim secara otomatis
-  bersama permintaan karena sudah diatur oleh backend sebelumnya (jika
-  menggunakan withCredentials: true di frontend)
+- When the user submits the reward claim form, the frontend sends a POST request
+  to the `/claim-reward` API.
+- The previously received CSRF token is included in the `X-CSRF-TOKEN` header.
+- The `backend_session` cookie containing the user's session ID is automatically
+  sent with the request because it was set by the backend and
+  `withCredentials: true` is used in the frontend.
+
+### Session Configuration in Laravel
 
 `config/session.php`
 
 ```php
 return [
     'driver' => 'cookie',
-    'lifetime' => 10080, // Durasi sesi dalam menit (7 hari)
-    'expire_on_close' => false, // Hapus cookie sesi saat browser ditutup
+    'lifetime' => 10080, // Session duration in minutes (7 days)
+    'expire_on_close' => false, // Delete session cookie on browser close
     'cookie' => 'backend_session',
-    'secure' => env('SESSION_SECURE_COOKIE', false), // Gunakan `true` jika aplikasi berjalan di HTTPS
-    'same_site' => 'none', // Cegah CSRF lintas situs
-    'http_only' => true // cookie will only be accessible through HTTP protocol
+    'secure' => env('SESSION_SECURE_COOKIE', false), // Use `true` if the app runs over HTTPS
+    'same_site' => 'none', // Prevent cross-site CSRF
+    'http_only' => true, // Cookie accessible only via HTTP
 ];
 ```
+
+### Reward Claim Endpoint in Laravel
 
 `web/routes.php`
 
@@ -171,20 +173,21 @@ Route::post('/claim-reward', function () {
 
     $period = Period::where('name', 'current')->first(); 
     if (!$period) {
-        return response()->json(['message' => 'Periode tidak ditemukan.'], 404);
+        return response()->json(['message' => 'Period not found.'], 404);
     }
+
     $endAt = Carbon::parse($period->end_at);
     $duration = $endAt->diffInMinutes(Carbon::now());
 
     if (session()->has('claimed')) {
-        return response()->json(['message' => 'Anda sudah melakukan klaim.'], 403);
+        return response()->json(['message' => 'You have already claimed.'], 403);
     }
 
     session(['claimed' => true]);
 
-    $cookieLifetime = max($duration, 1); // Jangan sampai durasi jadi negatif, set minimal 1 menit
+    $cookieLifetime = max($duration, 1); // Ensure duration is not negative, set a minimum of 1 minute
     $cookie = cookie('backend_session', session()->getId(), $cookieLifetime);
 
-    return response()->json(['message' => 'Klaim berhasil!'])->withCookie($cookie);
+    return response()->json(['message' => 'Claim successful!'])->withCookie($cookie);
 });
 ```
