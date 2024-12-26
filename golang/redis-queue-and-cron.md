@@ -1,16 +1,23 @@
 # Redis Queue and Cron in Go
 
-In this tutorial we will interacts with queue and put it to a redis server using
-`github.com/hibiken/asynq` package and create a scheduler for a scheduled task
-using `github.com/robfig/cron` package.
+In this tutorial, we will interact with a queue and put it to a Redis server
+using the `github.com/hibiken/asynq` package and create a scheduler for a
+scheduled task using the `github.com/robfig/cron` package. This step-by-step
+guide explains how to set up a queue, schedule tasks, and handle graceful
+shutdowns.
 
-First we need to init a module
+## Initialize the Module
+
+Start by creating a new Go module for the project:
 
 ```bash
 go mod init learn_queue_and_cron
 ```
 
-create `cron.go` file
+## Create `cron.go`
+
+The `cron.go` file is responsible for scheduling and running tasks at specific
+intervals. Below is the implementation:
 
 ```go
 package main
@@ -42,7 +49,12 @@ func runCron(c *cron.Cron) {
 }
 ```
 
-create `queue.go` file
+This code schedules a task to run every minute and keeps the application running
+to ensure the scheduler works continuously.
+
+## Create `queue.go`
+
+The `queue.go` file manages task processing using Asynq. Here's the code:
 
 ```go
 package main
@@ -89,7 +101,16 @@ func reportHandler(ctx context.Context, task *asynq.Task) error {
 }
 ```
 
-create `router.go` file
+### Explanation
+
+- **Handlers:** `emailHandler` and `reportHandler` process tasks by parsing
+  their payloads and executing the respective actions.
+- **Task Queue:** Tasks such as "send_email" and "generate_report" are defined
+  and processed via Asynq's task queue.
+
+## Create `router.go`
+
+The `router.go` file sets up HTTP endpoints to enqueue tasks:
 
 ```go
 package main
@@ -159,7 +180,11 @@ func setupRouter(client *asynq.Client) *gin.Engine {
 }
 ```
 
-create `main.go` file
+This code uses the Gin framework to expose two endpoints for enqueuing tasks.
+
+## Create `main.go`
+
+The `main.go` file integrates everything together:
 
 ```go
 package main
@@ -197,7 +222,7 @@ func main() {
 		Handler: router,
 	}
 
-	// prepare shutdown context
+	// Prepare shutdown context
 	ctx, stop := context.WithCancel(context.Background())
 	defer stop()
 	quit := make(chan os.Signal, 1)
@@ -232,21 +257,29 @@ func appShutdown(ctx context.Context, httpServer *http.Server, c *cron.Cron, ser
 }
 ```
 
-install all depedency
+This file combines the queue, cron, HTTP server, and shutdown logic.
+
+## Install Dependencies
+
+Install all required dependencies:
 
 ```bash
 go mod tidy
 ```
 
-build it using this command
+## Build and Run the Application
+
+Build and run the application using:
 
 ```bash
 go build -o run *.go && ./run
 ```
 
-try to open the browser
+## Test the Application
+
+Visit the following endpoints to enqueue tasks:
 
 - [http://localhost:8080/enqueue/email](http://localhost:8080/enqueue/email)
 - [http://localhost:8080/enqueue/report](http://localhost:8080/enqueue/report)
 
-then watch the terminal output
+Watch the terminal for the task execution logs.
