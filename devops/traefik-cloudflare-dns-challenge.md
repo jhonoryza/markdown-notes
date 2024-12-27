@@ -1,6 +1,6 @@
 # Traefik Cloudflare DNS Challenge
 
-## Contoh konfigurasi docker compose
+## Example Docker Compose Configuration
 
 ```
 traefik:
@@ -28,80 +28,79 @@ traefik:
     - "traefik.http.routers.traefik.service=api@internal"
 ```
 
-ubah `traefik.domain.id` dengan domain yang anda gunakan
+Replace traefik.domain.id with your actual domain.
 
-buat file `.env` tambahkan
+Create a .env file and add the following:
 
 ```
 CF_DNS_API_TOKEN=
 ```
 
-yang di dapat dr cloudflare
+This token can be obtained from Cloudflare.
 
-### Berikut adalah langkah-langkah untuk membuat API token di Cloudflare dengan izin yang diperlukan untuk mengelola DNS untuk domain Anda:
+### Steps to Create an API Token in Cloudflare with the Required Permissions to Manage DNS for Your Domain
 
-#### Langkah 1: Masuk ke Akun Cloudflare
+#### Step 1: Log In to Your Cloudflare Account
 
-1. Buka Cloudflare dan masuk ke akun Anda dengan kredensial yang sesuai.
+1. Visit Cloudflare and log in with your credentials.
 
-#### Langkah 2: Akses Pengaturan API Tokens
+#### Step 2: Access the API Tokens Settings
 
-1. Setelah masuk, klik pada avatar atau nama akun Anda di sudut kanan atas.
-2. Pilih My Profile dari menu dropdown.
-3. Pada halaman profil, klik tab API Tokens.
+1. Once logged in, click on your avatar or account name in the top-right corner.
+2. Select My Profile from the dropdown menu.
+3. On the profile page, navigate to the API Tokens tab.
 
-#### Langkah 3: Membuat API Token Baru
+#### Step 3: Create a New API Token
 
-1. Klik tombol Create Token.
-2. Pilih template Edit zone DNS atau klik Create Custom Token jika ingin
-   menyesuaikan izin.
+1. Click the Create Token button.
+2. Select the Edit zone DNS template or click Create Custom Token if you want to
+   customize the permissions.
 
 #### Langkah 4: Mengatur Izin API Token
 
-Jika memilih Create Custom Token:
+If choosing Create Custom Token:
 
-1. Token Name: Beri nama token Anda, misalnya Traefik DNS Challenge.
+### Token Configuration Steps
 
-2. Permissions:
+1. **Token Name**:\
+   Give your token a name, such as `Traefik DNS Challenge`.
 
-   - Klik Add permissions.
-   - Pilih Zone sebagai Layanan.
-   - Pilih DNS sebagai Sumber.
-   - Pilih Edit sebagai Tindakan.
+2. **Permissions**:
+   - Click **Add permissions**.
+   - Choose **Zone** as the service.
+   - Select **DNS** as the resource.
+   - Choose **Edit** as the action.
 
-3. Zone Resources:
+3. **Zone Resources**:
+   - Click **Add Zone Resources**.
+   - Select **Include**.
+   - Choose **All Zones** or **Specific Zone** to restrict access to a
+     particular zone.
+     - If choosing **Specific Zone**, specify the domain, e.g., `example.com`.
 
-   - Klik Add Zone Resources.
-   - Pilih Include.
-   - Pilih All Zones atau Specific Zone jika Anda ingin membatasi akses ke zona
-     tertentu saja. Jika memilih Specific Zone, tentukan domain yang ingin
-     dikelola, misalnya example.com.
+4. **Client IP Address Filtering (optional)**:\
+   Add specific IP addresses if you want to restrict token usage to certain IPs.
 
-4. Client IP Address Filtering (opsional):
+5. **TTL (optional)**:\
+   Set a token expiration period if needed.
 
-   - Jika ingin membatasi token ini hanya untuk digunakan dari alamat IP
-     tertentu, tambahkan alamat IP yang sesuai.
+### Step 5: Create and Save the API Token
 
-5. TTL (opsional):
+1. Click **Continue to summary**.
+2. Review the token settings to ensure they are correct.
+3. Click **Create Token**.
 
-   - Tentukan waktu hidup token jika ingin token ini kadaluwarsa setelah periode
-     tertentu.
+---
 
-#### Langkah 5: Membuat dan Menyimpan API Token
+### Step 6: Save the API Token
 
-1. Klik Continue to summary.
-2. Tinjau pengaturan token Anda dan pastikan semuanya benar.
-3. Klik Create Token.
+1. Once the token is created, copy and save it in a secure location.
+   > **Note**: This is the only time the token will be displayed, so ensure you
+   > record it properly.
 
-#### Langkah 6: Menyimpan API Token
+Create a traefik/config/traefik.yaml file:
 
-1. Setelah token dibuat, salin token tersebut dan simpan di tempat yang aman.
-   Anda hanya akan melihat token ini sekali, jadi pastikan untuk mencatatnya
-   dengan baik.
-
-buat file `traefik/config/traefik.yaml`
-
-```
+```yaml
 global:
   checkNewVersion: false
   sendAnonymousUsage: false
@@ -110,7 +109,7 @@ api:
   dashboard: true
   debug: true
 
-accessLog: { }
+accessLog: {}
 
 entryPoints:
   web:
@@ -150,15 +149,29 @@ providers:
     watch: true
 ```
 
-ganti `xxx@gmail.com` dengan email yang anda gunakan di cloudflare
+Replace xxx@gmail.com with the email you use for Cloudflare.
 
-## Jalankan traefik
+## Running Traefik
 
-ketikan perintah `docker compose up -d`
+Run the following command to start Traefik:
 
-lalu akses http://traefik.domain.id atau domain yg sudah anda set tadi di awal
+```bash
+docker compose up -d
+```
 
-## debug proses dns challenge
+Then, access the dashboard via http://traefik.domain.id or the domain you
+configured earlier.
 
-cek file dengan perintah `cat /ssl-certs/acme.json` tp anda perlu masuk k dalam
-container traefik terlebih dahulu dengan cara : `docker exec -it traefik sh`
+## Debugging the DNS Challenge Process
+
+To debug the DNS challenge, inspect the file with the following command:
+
+```bash
+cat /ssl-certs/acme.json
+```
+
+However, you need to access the Traefik container first:
+
+```bash
+docker exec -it traefik sh
+```
