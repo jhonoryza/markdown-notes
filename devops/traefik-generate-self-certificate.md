@@ -1,4 +1,4 @@
-## Traefik Generate Self Certificate
+## Traefik Using Owned Certificate
 
 Example docker-compose.yml Configuration for Traefik with SSL Certificate
 Below is an example of a docker-compose.yml configuration for Traefik that uses your existing SSL certificate. In this example, we will utilize pre-existing certificate and private key files.
