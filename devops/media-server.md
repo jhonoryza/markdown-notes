@@ -39,7 +39,15 @@ services:
             - "traefik.http.routers.jellyfin.entrypoints=web"
             - "traefik.http.routers.jellyfin.rule=Host(`media.yourdomain.com`)"
             - "traefik.http.services.jellyfin.loadbalancer.server.port=8096"
+        networks:
+            - traefik
+
+networks:
+  traefik:
+    external: true
 ```
+
+You can remove labels and networks if not using traefik
 
 Replace `/path/to/your/media` with the actual path to your media files and
 `yourdomain.com` with your actual domain.
