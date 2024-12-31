@@ -1,47 +1,60 @@
-Memeriksa Zona Waktu Saat Ini
+# Checking the Current Time Zone
 
-timedatectl adalah utilitas baris perintah yang memungkinkan Anda untuk melihat
-dan mengubah waktu dan tanggal sistem. Perintah timedatectl\
-tersedia di semua sistem Linux berbasis sistem modern.
+`timedatectl` is a command-line utility that allows you to view and change the
+system's time and date. The `timedatectl` command is available on all modern
+Linux-based systems.
 
-Untuk melihat zona waktu saat ini, aktifkan perintah timedatectl tanpa opsi atau
-argumen apa pun:
+To view the current time zone, run the `timedatectl` command without any options
+or arguments:
 
-`timedatectl`
+```bash
+timedatectl
+```
+
+Example output:
 
 ```
                   Local time: Tue 2019-12-03 16:30:44 UTC
-                  Universal time: Tue 2019-12-03 16:30:44 UTC
-                        RTC time: Tue 2019-12-03 16:30:44
-                       Time zone: Etc/UTC (UTC, +0000)
-       System clock synchronized: no
+              Universal time: Tue 2019-12-03 16:30:44 UTC
+                    RTC time: Tue 2019-12-03 16:30:44
+                   Time zone: Etc/UTC (UTC, +0000)
+     System clock synchronized: no
 systemd-timesyncd.service active: yes
-                 RTC in local TZ: no
+             RTC in local TZ: no
 ```
 
-Seperti yang ditunjukkan oleh output di atas, zona waktu sistem diatur ke UTC:
+As shown in the output above, the system time zone is set to UTC.
 
-Zona waktu sistem dikonfigurasikan dengan menghubungkan /etc/localtime ke
-pengidentifikasi zona waktu biner di direktori /usr/share/zoneinfo.
+The system time zone is configured by linking `/etc/localtime` to the binary
+time zone identifier in the `/usr/share/zoneinfo` directory.
 
-Jadi, opsi lain untuk memeriksa zona waktu adalah dengan memeriksa jalur symlink
-dengan menggunakan perintah ls:
+Another way to check the time zone is by inspecting the symlink path using the
+`ls` command:
 
-ls -l /etc/localtimelrwxrwxrwx 1 root root 27 Dec 3 16:29 /etc/localtime ->
-/usr/share/zoneinfo/Etc/UTC
+```bash
+ls -l /etc/localtime
+```
 
-## Mengubah Zona Waktu di Linux
-
-Sebelum mengubah zona waktu, Anda harus mencari tahu nama panjang untuk zona
-waktu yang ingin Anda gunakan. Konvensi penamaan zona waktu biasanya menggunakan
-format “Wilayah/Kota”.
-
-Untuk membuat daftar semua zona waktu yang tersedia, Anda dapat menggunakan
-perintah timedatectl atau membuat list file di direktori /usr/share/zoneinfo
+Example output:
 
 ```
-timedatectl list-timezones...
+lrwxrwxrwx 1 root root 27 Dec 3 16:29 /etc/localtime -> /usr/share/zoneinfo/Etc/UTC
 ```
+
+## Changing the Time Zone in Linux
+
+Before changing the time zone, you need to find out the long name for the time
+zone you want to use. The time zone naming convention usually follows the
+`Region/City` format.
+
+To list all available time zones, you can use the `timedatectl` command or list
+the files in the `/usr/share/zoneinfo` directory:
+
+```bash
+timedatectl list-timezones
+```
+
+Example output:
 
 ```
 Asia/Hong_Kong
@@ -56,28 +69,35 @@ Asia/Karachi
 Asia/Kathmandu
 ```
 
-Setelah Anda mengidentifikasi zona waktu mana yang akurat untuk lokasi Anda,
-jalankan perintah berikut sebagai pengguna sudo:
+Once you have identified the correct time zone for your location, run the
+following command as a sudo user:
 
-`sudo timedatectl set-timezone <timezone>`
+```bash
+sudo timedatectl set-timezone <timezone>
+```
 
-Misalnya, untuk mengubah zona waktu sistem ke waktu lokal Jakarta:
+For example, to change the system time zone to Jakarta local time:
 
-`sudo timedatectl set-timezone Asia/Jakarta`
+```bash
+sudo timedatectl set-timezone Asia/Jakarta
+```
 
-Jalankan perintah timedatectl untuk memverifikasi perubahan:
+Run the `timedatectl` command to verify the change:
+
+```bash
+timedatectl
+```
+
+Example output:
 
 ```
-timedatectl                      
-
-
                   Local time: Tue 2019-12-03 13:55:09 WIB
-                  Universal time: Tue 2019-12-03 18:55:09 UTC
-                        RTC time: Tue 2019-12-03 18:02:16
-                       Time zone: Asia/Jakarta (WIB, +0700)
-       System clock synchronized: no
+              Universal time: Tue 2019-12-03 18:55:09 UTC
+                    RTC time: Tue 2019-12-03 18:02:16
+                   Time zone: Asia/Jakarta (WIB, +0700)
+     System clock synchronized: no
 systemd-timesyncd.service active: yes
-                 RTC in local TZ: no
+             RTC in local TZ: no
 ```
 
-Dengan begini, Anda telah berhasil mengubah zona waktu sistem Anda.
+You have successfully changed your system's time zone.

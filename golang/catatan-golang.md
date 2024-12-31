@@ -1,49 +1,51 @@
-# tips
+# Tips
 
-- [using migration with golang](https://dev.to/wiliamvj/using-migrations-with-golang-3449)
-- [alexedwards blog](https://www.alexedwards.net/blog)
-- [common go mistakes](https://100go.co/)
+- [Using Migrations with Golang](https://dev.to/wiliamvj/using-migrations-with-golang-3449)
+- [Alex Edwards Blog](https://www.alexedwards.net/blog)
+- [Common Go Mistakes](https://100go.co/)
 
-## article
+## Articles
 
-- [https://victoriametrics.com/blog/go-io-reader-writer/](https://victoriametrics.com/blog/go-io-reader-writer/)
+- [Go io.Reader and io.Writer](https://victoriametrics.com/blog/go-io-reader-writer/)
 
-## issue static file mime type
+## Issue with Static File MIME Type
+
+To set the correct MIME type for static files in a Fiber application, use the following code:
 
 ```go
-	router := fiber.New()
+router := fiber.New()
 
-	router.All("/build/*.js", func(ctx *fiber.Ctx) error {
-		ctx.Set(fiber.HeaderContentType, "text/javascript")
-		return ctx.Next()
-	})
-	router.All("/build/*.css", func(ctx *fiber.Ctx) error {
-		ctx.Set(fiber.HeaderContentType, "text/css")
-		return ctx.Next()
-	})
-	router.Static("/build", "./public/build")
+router.All("/build/*.js", func(ctx *fiber.Ctx) error {
+	ctx.Set(fiber.HeaderContentType, "text/javascript")
+	return ctx.Next()
+})
+router.All("/build/*.css", func(ctx *fiber.Ctx) error {
+	ctx.Set(fiber.HeaderContentType, "text/css")
+	return ctx.Next()
+})
+router.Static("/build", "./public/build")
 ```
 
-# package yang sering digunakan
+# Frequently Used Packages
 
-- [validasi](github.com/go-playground/validator)
-- [driver mysql](github.com/go-sql-driver/mysql)
-- [driver postgres](github.com/jackc/pgx)
-- [migration](github.com/golang-migrate/migrate/)
-- [httprouter](github.com/julienschmidt/httprouter)
-- [test assertion](github.com/stretchr/testify)
-- [orm](gorm.io/gorm)
-- [orm driver mysql](gorm.io/driver/mysql)
-- [orm driver postgres](gorm.io/driver/postgres)
-- [config management](github.com/spf13/viper)
-- [redis](github.com/redis/go-redis)
-- [logger](github.com/sirupsen/logrus)
-- [fiber](github.com/gofiber/fiber)
-- [load env file](github.com/joho/godotenv)
+- [Validation](github.com/go-playground/validator)
+- [MySQL Driver](github.com/go-sql-driver/mysql)
+- [Postgres Driver](github.com/jackc/pgx)
+- [Migration](github.com/golang-migrate/migrate/)
+- [HTTP Router](github.com/julienschmidt/httprouter)
+- [Test Assertion](github.com/stretchr/testify)
+- [ORM](gorm.io/gorm)
+- [ORM Driver MySQL](gorm.io/driver/mysql)
+- [ORM Driver Postgres](gorm.io/driver/postgres)
+- [Config Management](github.com/spf13/viper)
+- [Redis](github.com/redis/go-redis)
+- [Logger](github.com/sirupsen/logrus)
+- [Fiber](github.com/gofiber/fiber)
+- [Load Env File](github.com/joho/godotenv)
 
-# docker configuration
+# Docker Configuration
 
-## contoh Dockerfile untuk golang
+## Example Dockerfile for Golang
 
 ```Dockerfile
 # Stage 1: Build stage
@@ -80,7 +82,7 @@ ENTRYPOINT ["/app/myapp"]
 EXPOSE 8080
 ```
 
-## contoh file `docker-compose.yml`
+## Example `docker-compose.yml` File
 
 ```yaml
 version: "3"
@@ -96,7 +98,7 @@ services:
             - ./.env
 ```
 
-## contoh isi Makefile
+## Example Makefile
 
 ```Makefile
 build:
