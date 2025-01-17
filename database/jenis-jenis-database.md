@@ -1,5 +1,23 @@
 # Beberapa Jenis Database yang Populer
 
+### Summary
+
+Dalam dunia teknologi, terdapat berbagai jenis database yang masing-masing memiliki kelebihan dan kegunaan spesifik. Berikut adalah beberapa jenis database yang populer beserta kapan dan mengapa Anda mungkin membutuhkannya:
+
+1. **Relational Databases (RDBMS)**: Cocok untuk data terstruktur dengan hubungan antar entitas yang jelas, membutuhkan konsistensi dan integritas data, serta mendukung query yang kompleks dan transaksi ACID. Contoh: MySQL, PostgreSQL, SQLite.
+
+2. **In-Memory Databases**: Ideal untuk akses data yang sangat cepat dan data sementara, serta analitik real-time. Contoh: Redis, Memcached.
+
+3. **Embedded Databases**: Digunakan untuk aplikasi ringan yang tidak memerlukan server terpisah, mudah didistribusikan, dan menyimpan data lokal. Contoh: SQLite, RocksDB.
+
+4. **Time-Series Databases (TSDB)**: Diperlukan untuk data yang berfokus pada waktu, sering diperbarui, dan membutuhkan query berbasis waktu serta retensi data. Contoh: InfluxDB, TimescaleDB.
+
+5. **Realtime Databases (RTDB)**: Berguna untuk sinkronisasi data langsung antar klien, responsivitas tinggi, dan skema data yang fleksibel. Contoh: Firebase Realtime Database, Supabase.
+
+6. **Analytical Databases (OLAP)**: Digunakan untuk analisis data skala besar, query yang kompleks, batch processing, dan penyimpanan data historis besar. Contoh: ClickHouse, BigQuery.
+
+Setiap jenis database memiliki kelebihan dan kasus penggunaan yang spesifik, sehingga pemilihan database yang tepat sangat penting untuk memenuhi kebutuhan aplikasi Anda.
+
 ### Relational Databases (RDBMS)
 
 Contoh: MySQL, PostgreSQL, SQLite, Oracle Database, Microsoft SQL Server.
