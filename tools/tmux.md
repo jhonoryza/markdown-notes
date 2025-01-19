@@ -6,6 +6,21 @@
 sudo apt install tmux
 ```
 
+## keybinding
+
+- `ctrl+L+w` to create a new window
+- `ctrl+L+1` to switch to specific window 1
+- `ctrl+L+d` to detach session
+- `ctrl+L+)` to cycle next session
+- `ctrl+L+(` to cycle prev session
+- `ctrl+L+|` to split vertical pane
+- `ctrl+L+"` to split horizontal pane
+- `ctrl+L+o` to cycle next pane
+
+- `tmux a -t explore` to attach a session name explore
+- `tmux ls` to list all session
+- `tmux new -s test` to create a new session name test
+
 ### personal config
 
 edit this file `~/.tmux.conf`
@@ -106,11 +121,11 @@ set-option -g pane-border-style "fg=#1f2335"
 # -r means that the bind can repeat without entering prefix again
 # -n means that the bind doesn't use the prefix
 
-# Set the prefix to Ctrl+Space
-set -g prefix C-Space
+# Set the prefix to Ctrl+L
+set -g prefix C-L
 
 # Send prefix to a nested tmux session by doubling the prefix
-bind C-Space send-prefix
+bind C-L send-prefix
 
 # 'PREFIX r' to reload of the config file
 unbind r
