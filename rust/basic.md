@@ -1,5 +1,9 @@
 # Basic Rust
 
+## Installation
+
+check this [`link`](https://www.rust-lang.org/tools/install)
+
 ## Get Started
 
 to create the project run this command
