@@ -1,4 +1,4 @@
-# Basic Rust
+# Rust Basic
 
 ## Installation
 
@@ -336,7 +336,7 @@ clone value
 
 ```rs
 let s1: String = String::from("rust"); // heap allocated string
-let s2: String = s1.clone; // s2 has its own copy of s1 value
+let s2: String = s1.clone(); // s2 has its own copy of s1 value
 
 println!("s1 {s1}"); // rust
 println!("s2 {s2}"); // rust
