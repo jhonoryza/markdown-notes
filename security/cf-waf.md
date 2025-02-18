@@ -6,29 +6,38 @@ XSS (Cross-Site Scripting), dan banyak lagi. Cloudflare WAF adalah salah satu
 solusi WAF paling populer dan efektif yang tersedia, dan sangat mudah
 diintegrasikan dengan aplikasi Anda. Keuntungan Menggunakan Cloudflare WAF:
 
-    1. Perlindungan Real-Time:
+- Perlindungan Real-Time:
 
-        Cloudflare WAF memantau lalu lintas ke aplikasi Anda secara real-time dan memblokir ancaman sebelum mencapai server Anda.
+  Cloudflare WAF memantau lalu lintas ke aplikasi Anda secara real-time dan
+  memblokir ancaman sebelum mencapai server Anda.
 
-    2. Aturan yang Dapat Disesuaikan:
+- Aturan yang Dapat Disesuaikan:
 
-        Anda dapat membuat aturan kustom untuk memblokir atau mengizinkan lalu lintas berdasarkan kriteria tertentu, seperti alamat IP, negara, atau pola permintaan.
+  Anda dapat membuat aturan kustom untuk memblokir atau mengizinkan lalu lintas
+  berdasarkan kriteria tertentu, seperti alamat IP, negara, atau pola
+  permintaan.
 
-    3. Perlindungan dari OWASP Top 10:
+- Perlindungan dari OWASP Top 10:
 
-        Cloudflare WAF dilengkapi dengan aturan bawaan untuk melindungi dari kerentanan keamanan umum yang tercantum dalam OWASP Top 10, seperti injeksi SQL, XSS, dan serangan CSRF.
+  Cloudflare WAF dilengkapi dengan aturan bawaan untuk melindungi dari
+  kerentanan keamanan umum yang tercantum dalam OWASP Top 10, seperti injeksi
+  SQL, XSS, dan serangan CSRF.
 
-    4. Manajemen Bot:
+- Manajemen Bot:
 
-        Cloudflare menyediakan alat manajemen bot yang canggih untuk membedakan antara bot baik (seperti crawler mesin pencari) dan bot jahat (seperti scraper atau auto clicker).
+  Cloudflare menyediakan alat manajemen bot yang canggih untuk membedakan antara
+  bot baik (seperti crawler mesin pencari) dan bot jahat (seperti scraper atau
+  auto clicker).
 
-    5. Kemudahan Integrasi:
+- Kemudahan Integrasi:
 
-        Cloudflare WAF mudah diintegrasikan dengan aplikasi Anda. Anda hanya perlu mengubah DNS Anda untuk mengarahkan lalu lintas melalui Cloudflare.
+  Cloudflare WAF mudah diintegrasikan dengan aplikasi Anda. Anda hanya perlu
+  mengubah DNS Anda untuk mengarahkan lalu lintas melalui Cloudflare.
 
-    6. Laporan dan Analytics:
+- Laporan dan Analytics:
 
-        Cloudflare menyediakan laporan dan analitik terperinci tentang ancaman yang terdeteksi dan tindakan yang diambil oleh WAF.
+  Cloudflare menyediakan laporan dan analitik terperinci tentang ancaman yang
+  terdeteksi dan tindakan yang diambil oleh WAF.
 
 Cloudflare menawarkan beberapa fitur untuk melindungi aplikasi web Anda dari bot
 dan serangan lainnya. Dua fitur yang sering digunakan adalah **Super Bot Fight
