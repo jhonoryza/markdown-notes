@@ -1,5 +1,9 @@
 # Laravel Deployment
 
+berikut merupakan catatan saya mengenai deployment aplikasi laravel secara
+sederhana dan otomatis menggunakan github action dan docker pada server yang
+berada di private network menggunakan cloudflare zero trust.
+
 - create `Dockerfile` sebagai base image, disini saya menggunakan database
   postgres
 
@@ -190,7 +194,8 @@ jobs:
   `commands: /media/server_data/docker/laravel-projects/deploy-filament-blog.sh`
   disesuaikan saja sesuai kebutuhan
 - buat file `deploy-filament-blog.sh` untuk running proses deployment di server
-- karena aplikasi nya menggunakan filament ada beberapa perintah untuk optimasi filament
+- karena aplikasi nya menggunakan filament ada beberapa perintah untuk optimasi
+  filament
 
 ```bash
 #! /bin/bash
