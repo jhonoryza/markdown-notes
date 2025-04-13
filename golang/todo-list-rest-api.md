@@ -321,6 +321,122 @@ func main() {
 
 ---
 
+## Step 8: Containerize the Application
+
+To deploy the application in a production-ready environment, we will create a `Dockerfile` and a `docker-compose.yaml` file.
+
+### Dockerfile
+
+Create a `Dockerfile` in the root directory of the project:
+
+```dockerfile
+# Use the official Golang image as the base image
+FROM golang:1.20 as builder
+
+# Set the working directory
+WORKDIR /app
+
+# Copy the Go modules manifests
+COPY go.mod go.sum ./
+
+# Download Go modules
+RUN go mod download
+
+# Copy the source code
+COPY . .
+
+# Build the application
+RUN go build -o main .
+
+# Use a minimal image for the final build
+FROM alpine:latest
+
+# Set the working directory
+WORKDIR /root/
+
+# Copy the binary from the builder stage
+COPY --from=builder /app/main .
+
+# Expose the application port
+EXPOSE 8080
+
+# Command to run the application
+CMD ["./main"]
+```
+
+### docker-compose.yaml
+
+Create a `docker-compose.yaml` file to define the services, including the PostgreSQL database:
+
+```yaml
+version: '3.8'
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8080"
+    environment:
+      - DB_HOST=db
+      - DB_USER=postgres
+      - DB_PASSWORD=yourpassword
+      - DB_NAME=todo_list
+      - DB_PORT=5432
+    depends_on:
+      - db
+
+  db:
+    image: postgres:15
+    container_name: postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD=yourpassword
+      POSTGRES_DB: todo_list
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+volumes:
+  postgres_data:
+```
+
+### Update the Database Configuration
+
+Modify the `dsn` in `config/database.go` to use environment variables:
+
+```go
+// filepath: /Users/fajar/Documents/github-projects/markdown-notes/golang/todo-list-rest-api/config/database.go
+// ...existing code...
+import "github.com/joho/godotenv"
+
+func ConnectDatabase() {
+	godotenv.Load()
+	dsn := os.Getenv("DB_HOST") + " user=" + os.Getenv("DB_USER") +
+		" password=" + os.Getenv("DB_PASSWORD") + " dbname=" + os.Getenv("DB_NAME") +
+		" port=" + os.Getenv("DB_PORT") + " sslmode=disable TimeZone=Asia/Jakarta"
+	// ...existing code...
+}
+```
+
+### Build and Run the Application
+
+1. Build the Docker images:
+   ```bash
+   docker-compose build
+   ```
+
+2. Start the containers:
+   ```bash
+   docker-compose up
+   ```
+
+3. Access the API at `http://localhost:8080`.
+
+---
+
 ## Testing the API
 
 1. Start the PostgreSQL server and create a database named `todo_list`.
