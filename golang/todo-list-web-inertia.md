@@ -29,6 +29,8 @@ todo-list-web-inertia/
 │   │   ├── components/
 │   │   │   └── TodoList.vue
 │   │   │   └── TodoForm.vue
+│   │   │   └── Login.vue
+│   │   │   └── PublicTodos.vue
 │   └── tailwind.config.js
 ├── Dockerfile
 └── docker-compose.yaml
@@ -217,6 +219,7 @@ todo-list-web-inertia/
    )
 
    func SetupRoutes(router *gin.Engine) {
+       router.GET("/public-todos", controllers.ListTodos) // Public endpoint
        router.POST("/login", controllers.Login)
        router.POST("/logout", controllers.Logout)
 
@@ -333,6 +336,191 @@ todo-list-web-inertia/
                this.title = '';
            },
        },
+   };
+   </script>
+   ```
+
+---
+
+## Step 2.1: Implementing the Login Page
+
+To create a login page, we will use Vue.js and Inertia.js to handle the frontend logic. The login page will send a POST request to the `/login` endpoint and handle the response accordingly.
+
+1. Create a `Login.vue` component:
+   ```vue
+   <!-- filepath: /Users/fajar/Documents/github-projects/markdown-notes/golang/todo-list-web-inertia/frontend/src/components/Login.vue -->
+   <template>
+       <div class="max-w-md mx-auto mt-10">
+           <h1 class="text-2xl font-bold mb-4">Login</h1>
+           <form @submit.prevent="submit">
+               <div class="mb-4">
+                   <label for="username" class="block text-sm font-medium">Username</label>
+                   <input
+                       v-model="username"
+                       id="username"
+                       type="text"
+                       class="border p-2 w-full"
+                       required
+                   />
+               </div>
+               <div class="mb-4">
+                   <label for="password" class="block text-sm font-medium">Password</label>
+                   <input
+                       v-model="password"
+                       id="password"
+                       type="password"
+                       class="border p-2 w-full"
+                       required
+                   />
+               </div>
+               <button type="submit" class="bg-blue-500 text-white px-4 py-2">Login</button>
+           </form>
+           <p v-if="error" class="text-red-500 mt-4">{{ error }}</p>
+       </div>
+   </template>
+
+   <script>
+   import { Inertia } from '@inertiajs/inertia';
+
+   export default {
+       data() {
+           return {
+               username: '',
+               password: '',
+               error: null,
+           };
+       },
+       methods: {
+           async submit() {
+               try {
+                   await Inertia.post('/login', {
+                       username: this.username,
+                       password: this.password,
+                   });
+               } catch (err) {
+                   this.error = 'Invalid username or password.';
+               }
+           },
+       },
+   };
+   </script>
+   ```
+
+2. Update the `App.vue` file to include a route for the login page:
+   ```vue
+   <!-- filepath: /Users/fajar/Documents/github-projects/markdown-notes/golang/todo-list-web-inertia/frontend/src/App.vue -->
+   <template>
+       <router-view />
+   </template>
+
+   <script>
+   import { createRouter, createWebHistory } from 'vue-router';
+   import Login from './components/Login.vue';
+   import TodoList from './components/TodoList.vue';
+
+   const routes = [
+       { path: '/login', component: Login },
+       { path: '/todos', component: TodoList },
+   ];
+
+   const router = createRouter({
+       history: createWebHistory(),
+       routes,
+   });
+
+   export default {
+       router,
+   };
+   </script>
+   ```
+
+---
+
+## Step 2.2: Implementing the Public Page for Viewing Todos
+
+To create a public page for viewing todos, we will add a new route and a Vue.js component.
+
+1. Update the backend routes to include a public endpoint for fetching todos:
+   ```go
+   // filepath: /Users/fajar/Documents/github-projects/markdown-notes/golang/todo-list-web-inertia/backend/routes/routes.go
+   package routes
+
+   import (
+       "todo-list-web-inertia/backend/controllers"
+       "todo-list-web-inertia/backend/middlewares"
+
+       "github.com/gin-gonic/gin"
+   )
+
+   func SetupRoutes(router *gin.Engine) {
+       router.GET("/public-todos", controllers.ListTodos) // Public endpoint
+       router.POST("/login", controllers.Login)
+       router.POST("/logout", controllers.Logout)
+
+       auth := router.Group("/")
+       auth.Use(middlewares.AuthMiddleware())
+       auth.GET("/todos", controllers.ListTodos)
+       auth.POST("/todos", controllers.ManageTodos)
+   }
+   ```
+
+2. Create a `PublicTodos.vue` component:
+   ```vue
+   <!-- filepath: /Users/fajar/Documents/github-projects/markdown-notes/golang/todo-list-web-inertia/frontend/src/components/PublicTodos.vue -->
+   <template>
+       <div>
+           <h1 class="text-2xl font-bold mb-4">Public Todos</h1>
+           <ul>
+               <li v-for="todo in todos" :key="todo.id" class="mb-2">
+                   <span :class="{ 'line-through': todo.completed }">{{ todo.title }}</span>
+               </li>
+           </ul>
+       </div>
+   </template>
+
+   <script>
+   import axios from 'axios';
+
+   export default {
+       data() {
+           return {
+               todos: [],
+           };
+       },
+       async created() {
+           const response = await axios.get('/public-todos');
+           this.todos = response.data;
+       },
+   };
+   </script>
+   ```
+
+3. Update the `App.vue` file to include a route for the public todos page:
+   ```vue
+   <!-- filepath: /Users/fajar/Documents/github-projects/markdown-notes/golang/todo-list-web-inertia/frontend/src/App.vue -->
+   <template>
+       <router-view />
+   </template>
+
+   <script>
+   import { createRouter, createWebHistory } from 'vue-router';
+   import Login from './components/Login.vue';
+   import TodoList from './components/TodoList.vue';
+   import PublicTodos from './components/PublicTodos.vue';
+
+   const routes = [
+       { path: '/login', component: Login },
+       { path: '/todos', component: TodoList },
+       { path: '/public-todos', component: PublicTodos },
+   ];
+
+   const router = createRouter({
+       history: createWebHistory(),
+       routes,
+   });
+
+   export default {
+       router,
    };
    </script>
    ```
