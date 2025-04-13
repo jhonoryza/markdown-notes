@@ -135,7 +135,29 @@ import (
 )
 
 func Login(c *gin.Context) {
-	// ...existing code...
+	var input struct {
+		Username string `json:"username" binding:"required"`
+		Password string `json:"password" binding:"required"`
+	}
+
+	if err := c.ShouldBindJSON(&input); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	var user models.User
+	if err := config.DB.Where("username = ?", input.Username).First(&user).Error; err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid username or password"})
+		return
+	}
+
+	if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(input.Password)); err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid username or password"})
+		return
+	}
+
+	c.SetCookie("user_id", string(user.ID), 3600, "/", "", false, true)
+	c.JSON(http.StatusOK, gin.H{"message": "Login successful"})
 }
 
 func Logout(c *gin.Context) {
@@ -159,11 +181,20 @@ import (
 )
 
 func ListTodos(c *gin.Context) {
-	// ...existing code...
+	var todos []models.Todo
+	config.DB.Find(&todos)
+	c.JSON(http.StatusOK, todos)
 }
 
 func ManageTodos(c *gin.Context) {
-	// ...existing code...
+	var input models.Todo
+	if err := c.ShouldBindJSON(&input); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	config.DB.Create(&input)
+	c.JSON(http.StatusOK, input)
 }
 ```
 
@@ -183,7 +214,13 @@ import (
 
 func AuthMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		// ...existing code...
+		userID, err := c.Cookie("user_id")
+		if err != nil || userID == "" {
+			c.Redirect(http.StatusFound, "/login")
+			c.Abort()
+			return
+		}
+		c.Next()
 	}
 }
 ```
@@ -204,7 +241,14 @@ import (
 )
 
 func SetupRoutes(router *gin.Engine) {
-	// ...existing code...
+	router.GET("/login", controllers.Login)
+	router.POST("/login", controllers.Login)
+	router.GET("/logout", controllers.Logout)
+
+	protected := router.Group("/")
+	protected.Use(middlewares.AuthMiddleware())
+	protected.GET("/todos", controllers.ListTodos)
+	protected.POST("/todos", controllers.ManageTodos)
 }
 ```
 
@@ -233,7 +277,11 @@ func SetupRoutes(router *gin.Engine) {
 <!-- filepath: /Users/fajar/Documents/github-projects/markdown-notes/golang/todo-list-web/templates/login.html -->
 {{ define "content" }}
 <div class="container mx-auto">
-    <!-- Login form -->
+    <form action="/login" method="POST">
+        <input type="text" name="username" placeholder="Username" required>
+        <input type="password" name="password" placeholder="Password" required>
+        <button type="submit">Login</button>
+    </form>
 </div>
 {{ end }}
 ```
