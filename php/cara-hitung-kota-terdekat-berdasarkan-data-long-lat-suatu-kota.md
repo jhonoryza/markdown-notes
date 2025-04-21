@@ -207,3 +207,79 @@ class Vincenty
 
 Choose the method based on the accuracy and performance requirements of your
 application.
+
+## Using PostgreSQL for Nearest Location Queries
+
+PostgreSQL, with the PostGIS extension, provides powerful tools for working with geospatial data. Depending on your use case, you can use either the `geometry` or `geography` data types:
+
+- **Geometry**: Faster for calculations within a flat coordinate system (e.g., meters), but less accurate for Earth's curvature.
+- **Geography**: More accurate for real-world distances (e.g., kilometers/meters) as it accounts for Earth's spheroidal shape.
+
+### Setting Up the Database
+
+1. **Create a GIST Index**  
+    To optimize queries, create a GIST index on the location column:
+
+    ```sql
+    CREATE INDEX idx_yourtable_location ON yourtable USING GIST(location);
+    ```
+
+2. **Define the Table Structure**  
+    Example table structure for storing places:
+
+    ```sql
+    CREATE TABLE places (
+      id SERIAL PRIMARY KEY,
+      name TEXT,
+      location GEOGRAPHY(Point, 4326) -- latitude, longitude
+    );
+    ```
+
+    > **Note**: `4326` is the EPSG code for Earth's coordinate system (WGS 84, used by Google Maps).
+
+3. **Insert Data**  
+    Insert a place with latitude and longitude:
+
+    ```sql
+    INSERT INTO places (name, location)
+    VALUES ('Place A', ST_SetSRID(ST_MakePoint(106.8272, -6.1751), 4326)::geography);
+    ```
+
+    > **Important**: The order is `longitude, latitude` (not `latitude, longitude`).
+
+### Querying for Nearest Locations
+
+1. **Find the Nearest Locations**  
+    To find the 5 nearest places to a user's location:
+
+    ```sql
+    SELECT id, name,
+      ST_Distance(location, ST_SetSRID(ST_MakePoint(106.8, -6.2), 4326)::geography) AS distance
+    FROM places
+    ORDER BY distance ASC
+    LIMIT 5;
+    ```
+
+2. **Filter by Radius**  
+    To find places within a specific radius (e.g., 10 km):
+
+    ```sql
+    SELECT id, name
+    FROM places
+    WHERE ST_DWithin(
+      location,
+      ST_SetSRID(ST_MakePoint(106.8, -6.2), 4326)::geography,
+      10000 -- radius in meters
+    )
+    ORDER BY ST_Distance(
+      location,
+      ST_SetSRID(ST_MakePoint(106.8, -6.2), 4326)::geography
+    ) ASC;
+    ```
+
+### Summary
+
+- Use **PostGIS** for geospatial queries.
+- Use the `geography(Point, 4326)` type for real-world distances.
+- Create a **GIST index** for faster queries.
+- Use `ST_Distance` for calculating distances and `ST_DWithin` for filtering by radius.
