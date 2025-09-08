@@ -1,5 +1,12 @@
-# SSE
+# SSE (Server-Sent Events) dengan Laravel & Redis
 
+Panduan lengkap implementasi SSE (Server-Sent Events) di Laravel, termasuk integrasi Redis untuk notifikasi real-time.
+
+---
+
+## 1. Dasar SSE di Laravel
+
+**Route & Controller:**
 ```php
 // routes/web.php
 Route::get('/sse', [SseController::class, 'stream']);
@@ -22,9 +29,9 @@ public function stream()
         'Connection' => 'keep-alive',
     ]);
 }
-
 ```
 
+**Frontend:**
 ```js
 const evtSource = new EventSource("/sse");
 evtSource.onmessage = function(event) {
@@ -33,125 +40,117 @@ evtSource.onmessage = function(event) {
 };
 ```
 
-pastikan nginx `proxy_buffering off`
+> **Catatan:** Pastikan Nginx `proxy_buffering off` agar data langsung dikirim ke client.
 
+---
 
-## Simpan data ke redis
+## 2. Simpan Data ke Redis
 
+**Menyimpan notifikasi ke Redis:**
 ```php
 Cache::put('notifications', $notifications, 60); // expires in 60s
 
 return response()->stream(function () {
-        while (true) {
-            $notifications = Cache::pull('notifications', []);
-            foreach ($notifications as $note) {
-                echo "data: " . json_encode($note) . "\n\n";
-            }
-            ob_flush();
-            flush();
-            sleep(1);
+    while (true) {
+        $notifications = Cache::pull('notifications', []);
+        foreach ($notifications as $note) {
+            echo "data: " . json_encode($note) . "\n\n";
         }
-    }, 200, [
-        'Content-Type' => 'text/event-stream',
-        'Cache-Control' => 'no-cache',
-        'Connection' => 'keep-alive',
-    ]);
+        ob_flush();
+        flush();
+        sleep(1);
+    }
+}, 200, [
+    'Content-Type' => 'text/event-stream',
+    'Cache-Control' => 'no-cache',
+    'Connection' => 'keep-alive',
+]);
 ```
 
+---
 
-## Simpan data ke database
+## 3. Simpan Data ke Database
 
+**Contoh Notifikasi ke Database:**
 ```php
 class UserRegisteredNotification extends Notification
 {
     protected $user;
-
-    public function __construct($user)
-    {
-        $this->user = $user;
-    }
-
-    public function via($notifiable)
-    {
-        return ['database'];
-    }
-
-    public function toDatabase($notifiable)
-    {
+    public function __construct($user) { $this->user = $user; }
+    public function via($notifiable) { return ['database']; }
+    public function toDatabase($notifiable) {
         return [
             'title' => 'User Baru',
             'message' => $this->user->name . ' telah mendaftar.',
         ];
     }
 }
-
-return response()->stream(function () {
-        $userId = 1; // Sesuaikan dengan user (misalnya admin)
-
-        while (true) {
-            $notifications = DB::table('notifications')
-                ->where('notifiable_id', $userId)
-                ->whereNull('read_at')
-                ->orderBy('created_at', 'desc')
-                ->get();
-
-            foreach ($notifications as $note) {
-                echo "data: " . json_encode([
-                    'id' => $note->id,
-                    'title' => $note->data['title'] ?? '',
-                    'message' => $note->data['message'] ?? '',
-                    'time' => $note->created_at
-                ]) . "\n\n";
-
-                // Tandai sudah dibaca
-                DB::table('notifications')
-                    ->where('id', $note->id)
-                    ->update(['read_at' => now()]);
-            }
-
-            ob_flush();
-            flush();
-            sleep(1);
-        }
-    }, 200, [
-        'Content-Type' => 'text/event-stream',
-        'Cache-Control' => 'no-cache',
-        'Connection' => 'keep-alive',
-    ]);
 ```
 
-## Redis get/set
+**Streaming dari Database:**
+```php
+return response()->stream(function () {
+    $userId = 1; // Sesuaikan dengan user (misal admin)
+    while (true) {
+        $notifications = DB::table('notifications')
+            ->where('notifiable_id', $userId)
+            ->whereNull('read_at')
+            ->orderBy('created_at', 'desc')
+            ->get();
+        foreach ($notifications as $note) {
+            echo "data: " . json_encode([
+                'id' => $note->id,
+                'title' => $note->data['title'] ?? '',
+                'message' => $note->data['message'] ?? '',
+                'time' => $note->created_at
+            ]) . "\n\n";
+            // Tandai sudah dibaca
+            DB::table('notifications')
+                ->where('id', $note->id)
+                ->update(['read_at' => now()]);
+        }
+        ob_flush();
+        flush();
+        sleep(1);
+    }
+}, 200, [
+    'Content-Type' => 'text/event-stream',
+    'Cache-Control' => 'no-cache',
+    'Connection' => 'keep-alive',
+]);
+```
 
-1. Saat Laravel membuat notifikasi, selain menyimpan ke DB: Simpan juga tanda di Redis (misal: `user:1:has_new_notification = true`).
+---
 
+## 4. Redis Get/Set Flag
+
+- Simpan flag di Redis saat notifikasi dibuat:
 ```php
 Redis::set("user:{$admin->id}:has_new_notification", true);
 ```
-
-2. SSE loop cukup cek Redis:
+- SSE loop hanya cek flag:
 ```php
 while (true) {
     if (Redis::get("user:$userId:has_new_notification") === 'true') {
         Redis::del("user:$userId:has_new_notification");
-
         $notifications = ...; // baru query DB
         // kirim data ke client
     }
-
     sleep(1);
 }
 ```
 
-## Redis Pub/Sub
+---
 
-Publish ke Redis saat Notifikasi Dibuat
+## 5. Redis Pub/Sub
 
+- Publish ke Redis saat notifikasi dibuat:
 ```php
 Redis::publish("notifications:{$admin->id}", json_encode([
-        'title' => 'User Baru',
-        'message' => $event->user->name . ' telah mendaftar.',
-        'time' => now()->toDateTimeString(),
-    ]));
+    'title' => 'User Baru',
+    'message' => $event->user->name . ' telah mendaftar.',
+    'time' => now()->toDateTimeString(),
+]));
 ```
 
 Karena Redis Pub/Sub bersifat blocking, kita tidak bisa pakai Laravel Redis facade dalam loop biasa. Gunakan Redis extension low-level langsung:
@@ -161,11 +160,9 @@ public function stream()
 {
     $userId = 1; // ganti sesuai user login jika ada sistem auth
     $channel = "notifications:$userId";
-
     return response()->stream(function () use ($channel) {
         $redis = new \Redis();
         $redis->connect('127.0.0.1', 6379);
-
         $redis->subscribe([$channel], function ($redis, $chan, $msg) {
             echo "data: {$msg}\n\n";
             ob_flush();
@@ -179,43 +176,38 @@ public function stream()
 }
 ```
 
-Kelebihan Redis Pub/Sub:
+**Kelebihan:**
+- Event-driven, tanpa polling
+- Skalabel jika Redis cukup kuat
 
-✅ Benar-benar event-driven
-✅ Tidak ada polling atau pengecekan manual
-✅ Skalabel untuk banyak user jika Redis cukup kuat
+**Catatan:**
+- Redis Pub/Sub tidak menyimpan pesan (hanya realtime)
+- Gunakan Laravel Octane/worker agar tidak blocking
 
-- Redis Pub/Sub tidak menyimpan pesan, hanya realtime. Jadi client harus sedang tersambung untuk menerima data
-- Untuk Laravel backend production: gunakan Laravel Octane atau worker process agar Redis subscription tidak diblokir kernel request.
+---
 
-## Redis pub/sub data tetap di database
+## 6. Redis Pub/Sub + Database
 
+- Publish ke Redis, data tetap di DB:
 ```php
 $admin->notify(new UserRegisteredNotification($event->user));
-
 Redis::publish("notifications:{$admin->id}", 'new');
 ```
-
-listen Redis + query DB
-
+- Subscribe Redis, lalu query DB:
 ```php
 public function stream()
 {
     $userId = 1; // atau dari session/auth
     $channel = "notifications:$userId";
-
     return response()->stream(function () use ($userId, $channel) {
         $redis = new \Redis();
         $redis->connect('127.0.0.1', 6379);
-
         $redis->subscribe([$channel], function ($redis, $chan, $msg) use ($userId) {
-            // Saat pesan Redis diterima → ambil notifikasi terbaru dari DB
             $notification = DB::table('notifications')
                 ->where('notifiable_id', $userId)
                 ->whereNull('read_at')
                 ->latest()
                 ->first();
-
             if ($notification) {
                 echo "data: " . json_encode([
                     'id' => $notification->id,
@@ -223,12 +215,9 @@ public function stream()
                     'message' => $notification->data['message'] ?? '',
                     'time' => $notification->created_at
                 ]) . "\n\n";
-
-                // Tandai sudah dikirim agar tidak dikirim ulang
                 DB::table('notifications')->where('id', $notification->id)->update([
                     'read_at' => now()
                 ]);
-
                 ob_flush();
                 flush();
             }
@@ -241,77 +230,73 @@ public function stream()
 }
 ```
 
-Kelebihan Pendekatan Ini:
-
-- Redis tidak digunakan untuk menyimpan payload → tetap ringan
+**Kelebihan:**
+- Redis tidak digunakan untuk menyimpan payload
 - Notifikasi tetap disimpan dan di-query dari DB Laravel
 - Real-time, tanpa polling terus-menerus
 - Cocok untuk Laravel + SSE tanpa third-party service
 
-Catatan:
-
-- Redis Pub/Sub bersifat blocking (proses akan menunggu pesan).
-- Laravel Redis facade tidak didesain untuk operasi seperti itu (akan menggantung worker / request).
-- implementasi diatas menggunakan \Redis PHP extension langsung:
-- Pastikan extension phpredis sudah aktif (php -m | grep redis)
+**Catatan:**
+- Redis Pub/Sub bersifat blocking (proses akan menunggu pesan)
+- Laravel Redis facade tidak didesain untuk operasi seperti itu (akan menggantung worker / request)
+- Implementasi di atas menggunakan \Redis PHP extension langsung
+- Pastikan extension phpredis sudah aktif (`php -m | grep redis`)
 - phpredis lebih cepat dan lebih stabil untuk Pub/Sub
 
-Kalau kamu pakai Predis (bukan ekstensi phpredis), kamu bisa juga pakai cara ini:
-
+Jika menggunakan Predis (bukan ekstensi phpredis):
 ```php
 $client = new \Predis\Client();
 
 $client->pubSubLoop()->subscribe("notifications:1", function ($message) {
     // Tidak semua versi predis support ini dengan baik di Laravel
 });
-
 ```
 
+---
 
 ### Kasus: 1000 User SSE dengan Redis Pub/Sub
 
-Setiap user membuka koneksi SSE → 1 koneksi HTTP yang panjang (long-lived), dan jika kamu pakai Redis->subscribe() langsung, maka:
+Setiap user membuka koneksi SSE → 1 koneksi HTTP panjang (long-lived), dan jika pakai Redis->subscribe() langsung:
 - 1 koneksi Redis per user (karena tiap SSE listener buka Redis sendiri)
 - 1 koneksi HTTP (SSE) dari browser ke server
 
 #### Berapa banyak koneksi yang bisa ditangani?
 
-1. Koneksi Redis
-    Redis sendiri sangat cepat dan ringan, tapi...
-    Redis default bisa menangani ~10.000 koneksi secara simultan.
-    Tapi jika kamu pakai 1000 Redis client aktif (1 per user), itu dianggap berat karena Redis Pub/Sub bersifat blocking (1 thread/process per koneksi di server kamu).
+1. **Koneksi Redis**
+    - Redis sangat cepat dan ringan, default bisa menangani ~10.000 koneksi simultan
+    - 1000 Redis client aktif (1 per user) berat karena Pub/Sub blocking (1 thread/process per koneksi di server)
+    - Masalah utama: proses PHP, bukan Redis-nya
+    - Laravel (tanpa Octane/worker) tidak efisien untuk long-running process seperti subscribe()
 
-    Masalahnya bukan Redis-nya, tapi proses PHP kamu.
-    Laravel (tanpa Octane/worker) tidak efisien untuk long-running process seperti subscribe()
-
-2. Koneksi HTTP
+2. **Koneksi HTTP**
     - Nginx default bisa handle ~1024 koneksi aktif (tergantung konfigurasi worker_connections)
-    - HTTP SSE tidak berat per koneksi, tapi perlu server yang bisa handle concurrent connection tinggi
-    - Realita: Laravel biasa (tanpa Octane) bukan ideal untuk >100 user SSE Karena:
+    - HTTP SSE tidak berat per koneksi, tapi server harus bisa handle concurrent connection tinggi
+    - Laravel biasa (tanpa Octane) bukan ideal untuk >100 user SSE
         - Redis->subscribe() blocking = 1 PHP process hang di tiap koneksi
         - PHP-FPM bukan untuk long-lived request
 
-Solusi:
+**Solusi:**
 1. Laravel Octane (Swoole/RoadRunner)
-2. Pisahkan SSE handler dari Laravel misal, Laravel → Publish to Redis → NodeJS/GO SSE Worker akan lebih scallable
-3. Gunakan Redis Flag (get/set) + Polling ringan (Lebih ringan dan tidak blocking. Bisa tahan ratusan user tanpa worker khusus.)
+2. Pisahkan SSE handler dari Laravel (Laravel → Publish to Redis → NodeJS/GO SSE Worker)
+3. Gunakan Redis Flag (get/set) + Polling ringan (bisa tahan ratusan user tanpa worker khusus)
 
-Kondisi	Rekomendasi
-< 100 user aktif	Laravel + SSE + Redis Flag (polling tiap 1–2 detik)
-100–1000 user aktif	Laravel Octane + Redis Pub/Sub
->1000 user aktif	Pisahkan SSE server (NodeJS/Go) untuk streaming Redis Pub/Sub
-Mau cepat & murah	Redis flag + polling ringan sudah cukup
+| Kondisi              | Rekomendasi                                      |
+|----------------------|--------------------------------------------------|
+| < 100 user aktif     | Laravel + SSE + Redis Flag (polling 1–2 detik)   |
+| 100–1000 user aktif  | Laravel Octane + Redis Pub/Sub                   |
+| >1000 user aktif     | SSE server terpisah (NodeJS/Go) + Redis Pub/Sub  |
+| Mau cepat & murah    | Redis flag + polling ringan                      |
 
-## Arsitektur Redis Pub/Sub + SSE dengan Go/NodeJS
+---
 
-1. Laravel App
+## 7. Arsitektur Redis Pub/Sub + SSE dengan Go/NodeJS
 
+1. **Laravel App**
     - Menyimpan notifikasi ke DB (notifications)
-    - Mempublish sinyal ke Redis channel notifications:<user_id>
-
-2. SSE Server (Node.js atau Go)
+    - Mempublish sinyal ke Redis channel `notifications:<user_id>`
+2. **SSE Server (Node.js/Go)**
     - Subscribe ke Redis Pub/Sub
-    - Saat ada pesan baru, tarik data dari database (opsional — bisa pakai Laravel API juga)
+    - Saat ada pesan baru, tarik data dari database (atau via Laravel API)
     - Kirim ke client via SSE
 
 ```go
@@ -420,14 +405,13 @@ func main() {
 	log.Println("SSE server running on :8080")
 	log.Fatal(http.ListenAndServe(":8080", nil))
 }
-
 ```
 
+**Frontend:**
 ```html
 <script>
 const userId = 1;
 const es = new EventSource("http://localhost:8080/sse?user_id=" + userId);
-
 es.onmessage = function(event) {
     const data = JSON.parse(event.data);
     console.log("New notification:", data);
@@ -435,20 +419,20 @@ es.onmessage = function(event) {
 </script>
 ```
 
-## Issue2 laravel stream
+---
 
-- Pastikan Laravel tidak menjalankan middleware yang bisa mem-buffer response seperti ThrottleRequests atau TrimStrings
-- check php.ini `output_buffering=4096 → artinya PHP akan buffer output hingga 4KB sebelum dikirim`
-- Tambahkan `ob_implicit_flush(true)` di awal `stream()` untuk memastikan semua echo langsung flush
-- tambahkan header
+## 8. Tips Laravel SSE
 
-```
-'Cache-Control' => 'no-cache, no-transform',
-'X-Accel-Buffering' => 'no', //untuk Nginx agar jangan buffer output
-'Content-Type' => 'text/event-stream',
-'Connection' => 'keep-alive',
-```
+- Nonaktifkan middleware yang mem-buffer response (ThrottleRequests, TrimStrings)
+- Cek `php.ini` → `output_buffering=4096` (ubah ke off jika perlu)
+- Tambahkan `ob_implicit_flush(true)` di awal stream()
+- Header penting:
+    - `'Cache-Control' => 'no-cache, no-transform'`
+    - `'X-Accel-Buffering' => 'no'` (untuk Nginx)
+    - `'Content-Type' => 'text/event-stream'`
+    - `'Connection' => 'keep-alive'`
 
+**Nginx config:**
 ```
 location /sse {
     proxy_pass http://your-php-backend;
@@ -457,31 +441,31 @@ location /sse {
     proxy_set_header Cache-Control 'no-cache';
     proxy_set_header X-Accel-Buffering no;
     chunked_transfer_encoding on;
-    proxy_buffering off; # ← WAJIB MATIKAN
+    proxy_buffering off;
     proxy_cache off;
     keepalive_requests 1000;
 }
 ```
 
-- proxy_http_version 1.1 → biar keep-alive jalan.
-- proxy_set_header Connection '' → jangan override ke close.
-- proxy_read_timeout 3600 → koneksi SSE bisa bertahan 1 jam.
-- X-Accel-Buffering no → cegah Nginx buffering, supaya data langsung dikirim ke browser.
+- proxy_http_version 1.1 → biar keep-alive jalan
+- proxy_set_header Connection '' → jangan override ke close
+- proxy_read_timeout 3600 → koneksi SSE bisa bertahan 1 jam
+- X-Accel-Buffering no → cegah Nginx buffering, supaya data langsung dikirim ke browser
 
-Catatan Penting:
-
+**Catatan Penting:**
 - Gunakan header SSE yang tepat: Content-Type: text/event-stream
 - Gunakan echo, bukan print_r, dd(), atau var_dump() — karena itu bisa memanggil formatter Laravel
-- Gunakan set_time_limit(0); jika kamu ingin stream berjalan terus-menerus
+- Gunakan set_time_limit(0); jika ingin stream berjalan terus-menerus
 
-## Security SSE
+---
 
-EventSource tidak bisa mengirim header kustom seperti Authorization
+## 9. Security SSE
 
-solusi
+EventSource tidak bisa mengirim header kustom seperti Authorization.
 
-### Gunakan token di URL query string
+**Solusi:**
 
+### a. Gunakan token di URL query string
 ```js
 const token = 'your_jwt_token_here';
 const evtSource = new EventSource(`/sse/notifications?token=${token}`);
@@ -491,47 +475,32 @@ const evtSource = new EventSource(`/sse/notifications?token=${token}`);
 public function stream(Request $request)
 {
     $token = $request->query('token');
-
     if (!$token || !auth()->once(['api_token' => $token])) {
         abort(403);
     }
-
     return response()->stream(...);
 }
-
-````
-
-- Token di URL terlihat di access logs dan browser history, jadi:
+```
+- Token di URL terlihat di access logs dan browser history
 - Batasi masa aktif token
 - Gunakan hanya untuk SSE (bukan token utama login)
-- Pastikan server mengirim header CORS jika lintas domain:
+- Pastikan server mengirim header CORS jika lintas domain
 
-```
-'Access-Control-Allow-Origin' => '*',
-'Access-Control-Allow-Headers' => 'Authorization',
-```
+### b. Polyfill (Experimental)
+- Jika butuh header Authorization, bisa pakai polyfill seperti event-source-polyfill (fetch + ReadableStream)
+- Tidak native, lebih kompleks, tidak seandal EventSource asli
 
-### Polyfill (Experimental)
+### c. Via COOKIE
+- Asalkan sebelum halaman SSE, user sudah login, bisa diverifikasi di backend
 
-Kalau kamu benar-benar butuh header Authorization, kamu bisa pakai polyfill seperti event-source-polyfill yang menggunakan fetch + ReadableStream.
+---
 
-Tapi ini:
+## 10. Redis Subscribe di Octane
 
-- Tidak native
-- Lebih kompleks
-- Tidak seandal EventSource asli
-
-### Via COOKIE
-
-asalkan sebelum halaman sse tsb, user sudah login, nanti bisa di verifikasi di backend
-
-## Tips menggunakan redis subscribe di OCTANE
-
-Redis client (phpredis) tidak support digunakan ulang antar process/worker dengan aman, terutama dalam mode subscribe() yang long-lived
+- Redis client (phpredis) tidak aman dipakai antar worker dalam mode subscribe()
+- Solusi: buat command worker terpisah
 
 Karena Octane menjalankan Laravel dalam long-lived workers
-
-Artinya:
 
 - Laravel tidak me-reboot app di setiap request (berbeda dari tradisional PHP-FPM)
 - Setiap request akan diserahkan ke worker yang tetap hidup
@@ -556,7 +525,6 @@ public function handle()
 ```
 
 Gunakan Laravel Octane Hooks jika perlu clean Redis per worker
-
 ```php
 Octane::tick(function () {
     Redis::disconnect();
@@ -565,23 +533,15 @@ Octane::tick(function () {
 Octane::booting(fn () => Redis::disconnect());
 ```
 
-### Kalau kamu pakai Predis (REDIS_CLIENT=predis)
+- Untuk Predis (REDIS_CLIENT=predis): aman di Octane, tapi subscribe tetap blocking
 
-maka kamu tidak akan kena error read error on connection seperti di PhpRedis, karena:
+---
 
-Predis adalah client murni PHP (pure PHP)
-✔ Tidak persistent
-✔ Tidak share koneksi antarraya process
-✔ Aman digunakan bahkan dalam Octane (Swoole/RoadRunner)
-
-Walaupun Predis aman digunakan di Octane, subscribe() tetap blocking, jd tetap buat command terpisah
-
-## Arsitektur: Redis Pub/Sub + SSE
+## 11. Arsitektur Redis Pub/Sub + SSE (Octane/Worker)
 
 ![sse](./sse.png)
 
-worker
-
+**Worker:**
 ```php
 // app/Console/Commands/RedisNotifier.php
 public function handle()
@@ -589,26 +549,19 @@ public function handle()
     Redis::subscribe(['notif-channel'], function ($message) {
         $payload = json_decode($message, true);
         $userId = $payload['user_id'];
-
-        // Kirim ke Redis stream khusus user
         Redis::rpush("sse:notifications:user:{$userId}", $message);
     });
 }
 ```
 
-sse endpoint
-
+**SSE Endpoint:**
 ```php
 Route::get('/sse/notifications', function (Request $request) {
-    $user = auth()->user(); // Asumsi pakai session
-
+    $user = auth()->user();
     return response()->stream(function () use ($user) {
         $redisKey = "sse:notifications:user:{$user->id}";
-
         while (true) {
-            // Tunggu data via Redis List (blocking 10 detik)
             $message = Redis::blpop($redisKey, 10);
-
             if ($message) {
                 echo "data: {$message[1]}\n\n";
                 ob_flush(); flush();
@@ -621,43 +574,35 @@ Route::get('/sse/notifications', function (Request $request) {
         'Connection' => 'keep-alive',
     ]);
 });
-
 ```
 
 `Redis::blpop($key, 10)` di SSE route:
-
-- Ini blocking tapi ada timeout → worker tidak hang selamanya
+- Blocking tapi ada timeout → worker tidak hang selamanya
 - Aman untuk dipakai dalam Octane
 
-frontend
-
+**Frontend:**
 ```js
-const evtSource = new EventSource("/sse/notifications");
-
-evtSource.onmessage = function (event) {
-    const data = JSON.parse(event.data);
-    console.log("Notifikasi:", data);
-};
-
+document.addEventListener('DOMContentLoaded', () => {
+    const evtSource = new EventSource("/sse/notifications");
+    evtSource.onmessage = function (event) {
+        const data = JSON.parse(event.data);
+        console.log("Notif:", data);
+    };
+    evtSource.onerror = function () {
+        console.error("SSE connection error");
+    };
+});
 ```
 
+---
 
-## Kemungkinan SSE di close connection
+## 12. Heartbeat (Ping) agar Koneksi Tidak Ditutup
 
-SSE butuh data dikirim secara berkala, atau koneksi dianggap "idle" dan bisa:
-
-- Ditutup oleh browser
-- Ditutup oleh proxy (misalnya Nginx, Cloudflare, dsb)
-- Dianggap timeout oleh Laravel atau server
-
-Solusi
-- Kirim “heartbeat” setiap beberapa detik
-
-```
+- Kirim event ping setiap beberapa detik agar koneksi tidak dianggap idle
+```php
 Route::get('/sse', function () {
     return response()->stream(function () {
         while (true) {
-            // kirim heartbeat setiap 25 detik
             echo "event: ping\ndata: {}\n\n";
             ob_flush(); flush();
             sleep(25);
@@ -671,11 +616,12 @@ Route::get('/sse', function () {
 });
 ```
 
-## Redis RPUSH dan LRANGE
+---
 
-Saat kirim notifikasi:
+## 13. Redis RPUSH & LRANGE untuk Notifikasi
 
-```
+- Kirim notifikasi:
+```php
 Redis::rpush("notifications:{$userId}", json_encode([
     'id' => Str::uuid(),
     'title' => 'Pesan baru',
@@ -683,101 +629,70 @@ Redis::rpush("notifications:{$userId}", json_encode([
     'timestamp' => now()->timestamp,
 ]));
 ```
-
-Di SSE (polling per detik misalnya):
-
-```
+- Ambil notifikasi di SSE:
+```php
 $notifs = Redis::lrange("notifications:{$userId}", 0, -1);
 Redis::del("notifications:{$userId}");
 ```
 
-Kenapa pakai RPUSH langsung lebih baik?
+**Kelebihan:**
+- Sederhana, tidak blocking
+- Data bisa diambil kapan saja
+- Scalable (list per user)
 
-Karena:
+**Solusi multi-tab:**
+- Jangan hapus langsung (DEL) di client
+- Tambahkan TTL (EXPIRE) agar Redis tidak penuh
+- Client simpan last_seen_id, hanya tampilkan yang baru
 
-- Lebih sederhana: Tidak perlu proses subscriber untuk dengarkan channel.
-- Tidak blocking: SSE endpoint cukup polling LRANGE dari Redis list → cepat dan ringan.
-- Reliable: Data disimpan di Redis (misal list per user), jadi bisa diambil kapan saja (tidak seperti pub/sub yang ephemeral).
-- Scalable: Bisa menyimpan notifikasi user dalam key list notifications:{user_id} → read dan delete fleksibel.
-
-Kekurangan:
-- ketika 1 user buka byk browser atau tab halaman yg sama, yg terkirim notifikasi itu hanya 1 client ?
-
-solusi :
-- Pakai Redis list notifications:{userId}.
-- Jangan hapus langsung (DEL) di client.
-- Tambahkan TTL (pakai EXPIRE) agar Redis gak penuh.
-- Client jaga sendiri last_seen_id → hanya tampilkan yang baru.
-
-```
-// Ambil semua notifikasi dari Redis
-$all = Redis::lrange("notifications:{$userId}", 0, -1);
-
-// Filter berdasarkan last seen
-$lastSeen = request()->get('last_seen'); // dikirim dari client misalnya
-$filtered = collect($all)->filter(function ($json) use ($lastSeen) {
-    $notif = json_decode($json, true);
-    return $notif['id'] > $lastSeen;
-});
-```
-
-full code
-```
+**Contoh streaming:**
+```php
 return response()->stream(function () {
-            $userId = auth()->id(); // user login
-            $cacheKey = "notifications:user:{$userId}";
-            $lastSeenId = null;
-
-            // pastikan output langsung dikirim
-            ini_set('output_buffering', 'off');
-            ini_set('zlib.output_compression', 'off');
-            ob_implicit_flush(true);
-
-            while (true) {
-                // ambil data notifikasi
-                $all = Redis::lrange($cacheKey, 0, -1);
-
-                if ($all) {
-                    foreach ($all as $raw) {
-                        $notif = json_decode($raw, true);
-
-                        // skip notifikasi lama
-                        if ($lastSeenId && $notif['id'] <= $lastSeenId) {
-                            continue;
-                        }
-
-                        echo "data: " . json_encode($notif) . "\n\n";
-                        $lastSeenId = $notif['id'];
-                    }
-
-                    // flush output ke client
-                    ob_flush();
-                    flush();
-                }
-
-                // sleep sebentar biar tidak makan CPU
-                sleep(2);
+    $userId = auth()->id();
+    $cacheKey = "notifications:user:{$userId}";
+    $lastSeenId = null;
+    ini_set('output_buffering', 'off');
+    ini_set('zlib.output_compression', 'off');
+    ob_implicit_flush(true);
+    while (true) {
+        $all = Redis::lrange($cacheKey, 0, -1);
+        if ($all) {
+            foreach ($all as $raw) {
+                $notif = json_decode($raw, true);
+                if ($lastSeenId && $notif['id'] <= $lastSeenId) continue;
+                echo "data: " . json_encode($notif) . "\n\n";
+                $lastSeenId = $notif['id'];
             }
-        }, 200, [
-            'Content-Type'      => 'text/event-stream',
-            'Cache-Control'     => 'no-cache',
-            'X-Accel-Buffering' => 'no',
-            'Connection'        => 'keep-alive',
-        ]);
+            ob_flush();
+            flush();
+        }
+        sleep(2);
     }
+}, 200, [
+    'Content-Type'      => 'text/event-stream',
+    'Cache-Control'     => 'no-cache',
+    'X-Accel-Buffering' => 'no',
+    'Connection'        => 'keep-alive',
+]);
 ```
 
+**Frontend:**
 ```js
 document.addEventListener('DOMContentLoaded', () => {
     const evtSource = new EventSource("/sse/notifications");
-
     evtSource.onmessage = function (event) {
         const data = JSON.parse(event.data);
         console.log("Notif:", data);
     };
-
     evtSource.onerror = function () {
         console.error("SSE connection error");
     };
 });
 ```
+
+---
+
+## Referensi
+- [Laravel Docs: Broadcasting](https://laravel.com/docs/broadcasting)
+- [Redis Pub/Sub](https://redis.io/docs/manual/pubsub/)
+- [MDN: Server-sent events](https://developer.mozilla.org/en-US/docs/Web/API/Server-sent_events)
